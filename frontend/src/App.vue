@@ -36,6 +36,7 @@ type DashboardModule = {
 }
 
 const AIGC_TUTORIAL_URL = 'https://zcnq69e2hdsq.feishu.cn/wiki/Xqe2whcAAi2FrUkYQA0cfUQXnsS'
+const CRAWLER_LAB_URL = 'https://wwwadawdwa.rth1.xyz/'
 
 const slides = [
   {
@@ -72,7 +73,7 @@ const userMenuItems = [
   { label: '提示词助手', detail: '图片/视频提示词优化', view: 'promptAssistant' },
   { label: 'AIGC教程', detail: '生成式智能课程', href: AIGC_TUTORIAL_URL },
   { label: '失败的Man', detail: '复盘与经验库', view: 'failureMan' },
-  { label: '爬虫靶机', detail: '实战训练环境', target: 'knowledge' },
+  { label: '爬虫靶机', detail: '实战训练环境', href: CRAWLER_LAB_URL },
   { label: '数据分析案例', detail: '真实数据练习', target: 'knowledge' },
   { label: '烂尾楼项目', detail: '项目重生计划', target: 'projects' },
   { label: '开源项目库', detail: '可复用代码资产', target: 'projects' },
@@ -83,7 +84,7 @@ const featureNavItems = [
   { label: '提示词助手', detail: '图片/视频提示词优化', view: 'promptAssistant' },
   { label: 'AIGC教程', detail: '生成式智能课程', href: AIGC_TUTORIAL_URL },
   { label: '失败的Man', detail: '复盘与经验库', view: 'failureMan' },
-  { label: '爬虫靶机', detail: '实战训练环境', target: 'feature-crawler' },
+  { label: '爬虫靶机', detail: '实战训练环境', href: CRAWLER_LAB_URL },
   { label: '数据分析', detail: '真实数据练习', target: 'feature-data' },
   { label: '项目重生', detail: '烂尾楼项目计划', target: 'feature-rebuild' },
   { label: '开源库', detail: '可复用代码资产', target: 'feature-opensource' },
@@ -94,7 +95,7 @@ const dashboardModules = [
   { title: '提示词助手', tag: 'Prompt', text: '使用 stepfun-ai/Step-3.5-Flash 和 CO-STAR 框架，把简单想法改成专业图片或视频提示词。', view: 'promptAssistant' },
   { title: 'AIGC教程', tag: 'Course', text: '从提示词、工作流到工程落地，整理生成式智能学习路径。', href: AIGC_TUTORIAL_URL },
   { title: '失败的Man', tag: 'Review', text: '沉淀试错记录，把失败原因转成下一次可复用的判断。', view: 'failureMan' },
-  { title: '爬虫靶机', tag: 'Lab', text: '围绕抓取、逆向、反反爬和数据清洗做实战训练。', target: 'knowledge' },
+  { title: '爬虫靶机', tag: 'Lab', text: '围绕抓取、逆向、反反爬和数据清洗做实战训练。', href: CRAWLER_LAB_URL },
   { title: '项目重生计划', tag: 'Build', text: '接手未完成项目，在重构、修复和发布中推进作品。', target: 'projects' },
 ] satisfies DashboardModule[]
 
@@ -584,7 +585,7 @@ onBeforeUnmount(() => {
                 <h3>失败的Man</h3>
                 <p>分享失败经验，记录试错复盘，把每一次卡壳变成下一次起步。 (跳转知识库)</p>
               </article>
-              <article id="feature-crawler" class="resource-card" @click="openAuth('login')">
+              <article id="feature-crawler" class="resource-card" @click="openExternalFeature(CRAWLER_LAB_URL)">
                 <h3>爬虫靶机</h3>
                 <p>专业的实战演练环境，提升网络数据抓取、逆向分析与对抗能力。</p>
               </article>
