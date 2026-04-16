@@ -73,6 +73,17 @@ const userMenuItems = [
   { label: '开源项目库', detail: '可复用代码资产', target: 'projects' },
 ] satisfies UserMenuItem[]
 
+const featureNavItems = [
+  { label: '大明白', detail: 'AI 问答工作台', view: 'damingbai' },
+  { label: '提示词助手', detail: '图片/视频提示词优化', view: 'promptAssistant' },
+  { label: 'AIGC教程', detail: '生成式智能课程', target: 'feature-aigc' },
+  { label: '失败的Man', detail: '复盘与经验库', target: 'feature-failure' },
+  { label: '爬虫靶机', detail: '实战训练环境', target: 'feature-crawler' },
+  { label: '数据分析', detail: '真实数据练习', target: 'feature-data' },
+  { label: '项目重生', detail: '烂尾楼项目计划', target: 'feature-rebuild' },
+  { label: '开源库', detail: '可复用代码资产', target: 'feature-opensource' },
+] satisfies UserMenuItem[]
+
 const dashboardModules = [
   { title: '大明白', tag: 'AI', text: '连接 SiliconFlow Qwen 模型，用流式输出处理课程、项目和排错问题。', view: 'damingbai' },
   { title: '提示词助手', tag: 'Prompt', text: '使用 stepfun-ai/Step-3.5-Flash 和 CO-STAR 框架，把简单想法改成专业图片或视频提示词。', view: 'promptAssistant' },
@@ -220,6 +231,24 @@ const handleUserMenuItem = (item: UserMenuItem) => {
   }
 }
 
+const handleFeatureNavItem = (item: UserMenuItem) => {
+  closeUserMenu()
+
+  if (item.view === 'damingbai') {
+    void openDamingbai()
+    return
+  }
+
+  if (item.view === 'promptAssistant') {
+    void openPromptAssistant()
+    return
+  }
+
+  if (item.target) {
+    scrollToSection(item.target)
+  }
+}
+
 const handleDashboardModule = (module: DashboardModule) => {
   if (module.view === 'damingbai') {
     void openDamingbai()
@@ -326,10 +355,15 @@ onBeforeUnmount(() => {
         <div v-if="!isAuthHeader" style="position: relative;left: -35px;">创智工坊</div>
       </a>
 
-      <nav v-if="!isAuthHeader" class="main-nav" aria-label="主导航">
-        <a href="#studio">工坊</a>
-        <a href="#knowledge">知识库</a>
-        <a href="#projects">项目</a>
+      <nav v-if="!isAuthHeader" class="main-nav" aria-label="功能导航">
+        <button
+          v-for="item in featureNavItems"
+          :key="item.label"
+          type="button"
+          @click="handleFeatureNavItem(item)"
+        >
+          {{ item.label }}
+        </button>
       </nav>
 
       <div v-if="!isAuthHeader" class="auth-actions" aria-label="账户入口">
@@ -472,35 +506,35 @@ onBeforeUnmount(() => {
             </div>
 
             <div class="resources-grid">
-              <article class="resource-card damingbai-card" @click="openDamingbai">
+              <article id="feature-damingbai" class="resource-card damingbai-card" @click="openDamingbai">
                 <h3>大明白</h3>
                 <p>接入 Qwen 大模型的流式 AI 工作台，随时处理课程、项目、排错和复盘问题。</p>
               </article>
-              <article class="resource-card prompt-card" @click="openPromptAssistant">
+              <article id="feature-prompt" class="resource-card prompt-card" @click="openPromptAssistant">
                 <h3>提示词助手</h3>
                 <p>接入 stepfun-ai/Step-3.5-Flash，用 CO-STAR 框架把简单想法优化成专业图片或视频提示词。</p>
               </article>
-              <article class="resource-card" @click="openAuth('login')">
+              <article id="feature-aigc" class="resource-card" @click="openAuth('login')">
                 <h3>AIGC教程</h3>
                 <p>掌握最新人工智能生成内容技术，利用大模型提高创作与工程效率。</p>
               </article>
-              <article class="resource-card" @click="openAuth('login')">
+              <article id="feature-failure" class="resource-card" @click="openAuth('login')">
                 <h3>失败的Man</h3>
                 <p>分享失败经验，记录试错复盘，把每一次卡壳变成下一次起步。 (跳转知识库)</p>
               </article>
-              <article class="resource-card" @click="openAuth('login')">
+              <article id="feature-crawler" class="resource-card" @click="openAuth('login')">
                 <h3>爬虫靶机</h3>
                 <p>专业的实战演练环境，提升网络数据抓取、逆向分析与对抗能力。</p>
               </article>
-              <article class="resource-card" @click="openAuth('login')">
+              <article id="feature-data" class="resource-card" @click="openAuth('login')">
                 <h3>数据分析案例</h3>
                 <p>从海量数据中挖掘核心价值，培养数据敏感度，构建严谨的数据思维。</p>
               </article>
-              <article class="resource-card" @click="openAuth('login')">
+              <article id="feature-rebuild" class="resource-card" @click="openAuth('login')">
                 <h3>“烂尾楼”项目重生计划</h3>
                 <p>接手真实的未完成项目，在修复与重构中体验代码的起死回生。</p>
               </article>
-              <article class="resource-card" @click="openAuth('login')">
+              <article id="feature-opensource" class="resource-card" @click="openAuth('login')">
                 <h3>“给你了”开源项目库</h3>
                 <p>丰富且高度可用的开源代码库，即下即用，加速你的项目启动。</p>
               </article>
@@ -1216,16 +1250,39 @@ onBeforeUnmount(() => {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 32px;
+  flex: 1;
+  gap: 8px;
+  max-width: min(700px, 54vw);
+  margin: 0 20px;
+  overflow-x: auto;
+  scrollbar-width: none;
   color: rgba(255, 255, 255, 0.85);
-  font-size: 14px;
-  font-weight: 500;
+  font-size: 13px;
+  font-weight: 800;
 }
 
-.main-nav a {
-  transition: color 0.3s ease;
+.main-nav::-webkit-scrollbar {
+  display: none;
+}
+
+.main-nav button {
+  flex: 0 0 auto;
+  min-height: 34px;
+  padding: 0 12px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.08);
   color: inherit;
-  text-decoration: none;
+  white-space: nowrap;
+  transition:
+    background-color 0.2s ease,
+    color 0.2s ease,
+    transform 0.2s ease;
+}
+
+.main-nav button:hover {
+  background: rgba(255, 255, 255, 0.18);
+  color: #ffffff;
+  transform: translateY(-1px);
 }
 
 .auth-actions {
@@ -1668,6 +1725,7 @@ h3 {
 }
 
 .resource-card {
+  scroll-margin-top: 110px;
   padding: 48px;
   border: 0;
   border-radius: 28px;
