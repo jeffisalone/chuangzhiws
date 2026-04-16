@@ -20,6 +20,7 @@ type PageView = 'home' | 'dashboard' | 'damingbai' | 'promptAssistant'
 type UserMenuItem = {
   label: string
   detail: string
+  href?: string
   target?: string
   view?: PageView
 }
@@ -28,9 +29,12 @@ type DashboardModule = {
   title: string
   tag: string
   text: string
+  href?: string
   target?: string
   view?: PageView
 }
+
+const AIGC_TUTORIAL_URL = 'https://zcnq69e2hdsq.feishu.cn/wiki/Xqe2whcAAi2FrUkYQA0cfUQXnsS'
 
 const slides = [
   {
@@ -65,7 +69,7 @@ const userMenuItems = [
   { label: 'Dashboard', detail: '工作台总览', view: 'dashboard' },
   { label: '大明白', detail: 'AI 问答工作台', view: 'damingbai' },
   { label: '提示词助手', detail: '图片/视频提示词优化', view: 'promptAssistant' },
-  { label: 'AIGC教程', detail: '生成式智能课程', target: 'knowledge' },
+  { label: 'AIGC教程', detail: '生成式智能课程', href: AIGC_TUTORIAL_URL },
   { label: '失败的Man', detail: '复盘与经验库', target: 'knowledge' },
   { label: '爬虫靶机', detail: '实战训练环境', target: 'knowledge' },
   { label: '数据分析案例', detail: '真实数据练习', target: 'knowledge' },
@@ -76,7 +80,7 @@ const userMenuItems = [
 const featureNavItems = [
   { label: '大明白', detail: 'AI 问答工作台', view: 'damingbai' },
   { label: '提示词助手', detail: '图片/视频提示词优化', view: 'promptAssistant' },
-  { label: 'AIGC教程', detail: '生成式智能课程', target: 'feature-aigc' },
+  { label: 'AIGC教程', detail: '生成式智能课程', href: AIGC_TUTORIAL_URL },
   { label: '失败的Man', detail: '复盘与经验库', target: 'feature-failure' },
   { label: '爬虫靶机', detail: '实战训练环境', target: 'feature-crawler' },
   { label: '数据分析', detail: '真实数据练习', target: 'feature-data' },
@@ -87,7 +91,7 @@ const featureNavItems = [
 const dashboardModules = [
   { title: '大明白', tag: 'AI', text: '连接 SiliconFlow Qwen 模型，用流式输出处理课程、项目和排错问题。', view: 'damingbai' },
   { title: '提示词助手', tag: 'Prompt', text: '使用 stepfun-ai/Step-3.5-Flash 和 CO-STAR 框架，把简单想法改成专业图片或视频提示词。', view: 'promptAssistant' },
-  { title: 'AIGC教程', tag: 'Course', text: '从提示词、工作流到工程落地，整理生成式智能学习路径。', target: 'knowledge' },
+  { title: 'AIGC教程', tag: 'Course', text: '从提示词、工作流到工程落地，整理生成式智能学习路径。', href: AIGC_TUTORIAL_URL },
   { title: '失败的Man', tag: 'Review', text: '沉淀试错记录，把失败原因转成下一次可复用的判断。', target: 'knowledge' },
   { title: '爬虫靶机', tag: 'Lab', text: '围绕抓取、逆向、反反爬和数据清洗做实战训练。', target: 'knowledge' },
   { title: '项目重生计划', tag: 'Build', text: '接手未完成项目，在重构、修复和发布中推进作品。', target: 'projects' },
@@ -210,6 +214,18 @@ const openPromptAssistant = async () => {
   window.scrollTo({ top: 0 })
 }
 
+const openExternalFeature = async (href: string) => {
+  closeUserMenu()
+  const user = await verifyCurrentUser()
+
+  if (!user) {
+    openAuth('login')
+    return
+  }
+
+  window.open(href, '_blank', 'noopener,noreferrer')
+}
+
 const handleUserMenuItem = (item: UserMenuItem) => {
   if (item.view === 'dashboard') {
     void openDashboard()
@@ -223,6 +239,11 @@ const handleUserMenuItem = (item: UserMenuItem) => {
 
   if (item.view === 'promptAssistant') {
     void openPromptAssistant()
+    return
+  }
+
+  if (item.href) {
+    void openExternalFeature(item.href)
     return
   }
 
@@ -244,6 +265,11 @@ const handleFeatureNavItem = (item: UserMenuItem) => {
     return
   }
 
+  if (item.href) {
+    void openExternalFeature(item.href)
+    return
+  }
+
   if (item.target) {
     scrollToSection(item.target)
   }
@@ -257,6 +283,11 @@ const handleDashboardModule = (module: DashboardModule) => {
 
   if (module.view === 'promptAssistant') {
     void openPromptAssistant()
+    return
+  }
+
+  if (module.href) {
+    void openExternalFeature(module.href)
     return
   }
 
@@ -514,7 +545,7 @@ onBeforeUnmount(() => {
                 <h3>提示词助手</h3>
                 <p>接入 stepfun-ai/Step-3.5-Flash，用 CO-STAR 框架把简单想法优化成专业图片或视频提示词。</p>
               </article>
-              <article id="feature-aigc" class="resource-card" @click="openAuth('login')">
+              <article id="feature-aigc" class="resource-card" @click="openExternalFeature(AIGC_TUTORIAL_URL)">
                 <h3>AIGC教程</h3>
                 <p>掌握最新人工智能生成内容技术，利用大模型提高创作与工程效率。</p>
               </article>
