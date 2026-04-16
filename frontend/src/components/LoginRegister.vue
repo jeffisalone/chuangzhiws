@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, watch } from 'vue'
 import DarkVeil from './DarkVeil.vue'
+import { AuthRequestError, login, registerUser } from '@/services/auth'
 
 type AuthMode = 'login' | 'register'
 
@@ -19,14 +20,24 @@ const emit = defineEmits<{
 }>()
 
 const isLogin = ref(props.initialMode === 'login')
-const email = ref('')
-const fullName = ref('')
+const accountName = ref('')
+const studentId = ref('')
+const realName = ref('')
 const password = ref('')
+const confirmPassword = ref('')
 const rememberMe = ref(false)
 const showPassword = ref(false)
+const formError = ref('')
+const formSuccess = ref('')
+const isSubmitting = ref(false)
+const passwordPattern = '^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d).+$'
+
+const isPasswordStrong = (value: string) => /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).+$/.test(value)
 
 const toggleMode = () => {
   isLogin.value = !isLogin.value
+  formError.value = ''
+  formSuccess.value = ''
   emit('mode-change', isLogin.value ? 'login' : 'register')
 }
 
@@ -34,18 +45,72 @@ const togglePasswordVisibility = () => {
   showPassword.value = !showPassword.value
 }
 
-const handleSubmit = () => {
-  const payload = isLogin.value
-    ? { email: email.value, password: password.value, rememberMe: rememberMe.value }
-    : { email: email.value, fullName: fullName.value, password: password.value }
+const handleSubmit = async () => {
+  formError.value = ''
+  formSuccess.value = ''
 
-  console.log(isLogin.value ? 'Login:' : 'Register:', payload)
+  if (isSubmitting.value) {
+    return
+  }
+
+  if (!isLogin.value) {
+    if (!/^\d{11}$/.test(studentId.value)) {
+      formError.value = '学号必须为 11 位数字。'
+      return
+    }
+
+    if (password.value.length < 8) {
+      formError.value = '密码至少需要 8 位。'
+      return
+    }
+
+    if (!isPasswordStrong(password.value)) {
+      formError.value = '密码必须同时包含大写字母、小写字母和数字。'
+      return
+    }
+
+    if (password.value !== confirmPassword.value) {
+      formError.value = '两次输入的密码不一致。'
+      return
+    }
+  }
+
+  const payload = isLogin.value
+    ? { accountName: accountName.value, password: password.value, rememberMe: rememberMe.value }
+    : {
+        accountName: accountName.value,
+        studentId: studentId.value,
+        realName: realName.value,
+        password: password.value,
+      }
+
+  try {
+    isSubmitting.value = true
+    const response = isLogin.value
+      ? await login(payload as { accountName: string; password: string; rememberMe: boolean })
+      : await registerUser(
+          payload as { accountName: string; studentId: string; realName: string; password: string },
+        )
+
+    formSuccess.value = isLogin.value
+      ? `登录成功，欢迎 ${response.result.user.accountName}`
+      : `注册成功，欢迎 ${response.result.user.accountName}`
+    password.value = ''
+    confirmPassword.value = ''
+  } catch (error) {
+    formError.value =
+      error instanceof AuthRequestError ? error.message : '请求失败，请稍后重试。'
+  } finally {
+    isSubmitting.value = false
+  }
 }
 
 watch(
   () => props.initialMode,
   (mode) => {
     isLogin.value = mode === 'login'
+    formError.value = ''
+    formSuccess.value = ''
   },
 )
 </script>
@@ -89,25 +154,41 @@ watch(
 
             <form class="main-form" @submit.prevent="handleSubmit">
               <div class="input-group">
-                <label for="auth-email">邮箱地址</label>
+                <label for="auth-account">账号名</label>
                 <input
-                  id="auth-email"
-                  v-model="email"
-                  autocomplete="email"
-                  type="email"
-                  placeholder="name@example.com"
+                  id="auth-account"
+                  v-model.trim="accountName"
+                  autocomplete="username"
+                  type="text"
+                  placeholder="请输入账号名"
                   required
                 />
               </div>
 
               <div v-if="!isLogin" class="input-group">
-                <label for="auth-name">姓名</label>
+                <label for="auth-student-id">学号</label>
                 <input
-                  id="auth-name"
-                  v-model="fullName"
+                  id="auth-student-id"
+                  v-model.trim="studentId"
+                  autocomplete="off"
+                  inputmode="numeric"
+                  pattern="\d{11}"
+                  maxlength="11"
+                  type="text"
+                  placeholder="请输入 11 位学号"
+                  title="学号必须为 11 位数字"
+                  required
+                />
+              </div>
+
+              <div v-if="!isLogin" class="input-group">
+                <label for="auth-real-name">真实姓名</label>
+                <input
+                  id="auth-real-name"
+                  v-model.trim="realName"
                   autocomplete="name"
                   type="text"
-                  placeholder="请输入姓名"
+                  placeholder="请输入真实姓名"
                   required
                 />
               </div>
@@ -120,7 +201,9 @@ watch(
                     v-model="password"
                     :type="showPassword ? 'text' : 'password'"
                     :autocomplete="isLogin ? 'current-password' : 'new-password'"
+                    :pattern="isLogin ? undefined : passwordPattern"
                     placeholder="请输入密码"
+                    :title="isLogin ? undefined : '密码必须同时包含大写字母、小写字母和数字'"
                     required
                   />
                   <button
@@ -169,6 +252,18 @@ watch(
                 </div>
               </div>
 
+              <div v-if="!isLogin" class="input-group">
+                <label for="auth-confirm-password">确认密码</label>
+                <input
+                  id="auth-confirm-password"
+                  v-model="confirmPassword"
+                  :type="showPassword ? 'text' : 'password'"
+                  autocomplete="new-password"
+                  placeholder="请再次输入密码"
+                  required
+                />
+              </div>
+
               <div v-if="isLogin" class="form-options">
                 <label class="checkbox-container">
                   <input v-model="rememberMe" type="checkbox" />
@@ -178,28 +273,12 @@ watch(
                 <a class="forgot-link" href="#">忘记密码?</a>
               </div>
 
+              <p v-if="formError" class="form-error" role="alert">{{ formError }}</p>
+              <p v-if="formSuccess" class="form-success" role="status">{{ formSuccess }}</p>
+
               <div class="button-group">
-                <button class="btn-submit" type="submit">{{ isLogin ? '登录' : '注册' }}</button>
-                <button class="btn-google" type="button">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24">
-                    <path
-                      d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
-                      fill="#4285f4"
-                    />
-                    <path
-                      d="M12 23c3.11 0 5.71-1.03 7.62-2.78l-3.57-2.77c-.99.66-2.23 1.06-4.05 1.06-3.11 0-5.74-2.1-6.68-4.92H1.72v2.85C3.62 20.34 7.55 23 12 23z"
-                      fill="#34a853"
-                    />
-                    <path
-                      d="M5.32 13.59c-.24-.72-.38-1.49-.38-2.3s.14-1.59.38-2.3V6.14H1.72C.62 8.35 0 10.85 0 13.5s.62 5.15 1.72 7.36l3.6-2.81c-.24-.72-.38-1.49-.38-2.3z"
-                      fill="#fbbc05"
-                    />
-                    <path
-                      d="M12 4.61c1.69 0 3.2.58 4.4 1.73l3.3-3.3C17.7 1.19 15.11 0 12 0 7.55 0 3.62 2.66 1.72 6.14l3.6 2.81c.94-2.82 3.57-4.92 6.68-4.92z"
-                      fill="#ea4335"
-                    />
-                  </svg>
-                  {{ isLogin ? '使用 Google 登录' : '使用 Google 注册' }}
+                <button class="btn-submit" type="submit" :disabled="isSubmitting">
+                  {{ isSubmitting ? '提交中...' : isLogin ? '登录' : '注册' }}
                 </button>
               </div>
             </form>
@@ -512,8 +591,7 @@ watch(
   margin-top: 6px;
 }
 
-.btn-submit,
-.btn-google {
+.btn-submit {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -544,23 +622,26 @@ watch(
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
-.btn-google {
-  gap: 10px;
-  border: 1px solid #e2e8f0;
-  background: #ffffff;
-  color: #101214;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+.btn-submit:disabled {
+  cursor: wait;
+  opacity: 0.68;
+  transform: none;
 }
 
-.btn-google:hover {
-  background: #f8fafc;
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-  transform: translateY(-1px);
+.form-error {
+  margin: -4px 0 0;
+  color: #dc2626;
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1.5;
 }
 
-.btn-google:active {
-  transform: translateY(0);
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+.form-success {
+  margin: -4px 0 0;
+  color: #15803d;
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1.5;
 }
 
 .form-footer {
