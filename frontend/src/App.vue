@@ -651,7 +651,7 @@ onBeforeUnmount(() => {
             <p class="eyebrow dark">Dashboard</p>
             <h1 id="dashboard-title">工作台总览</h1>
             <p>
-              {{ currentUser.realName || currentUser.accountName }}，从这里进入课程、复盘、靶机和项目库。
+              {{ currentUser.accountName }}，从这里进入课程、复盘、靶机和项目库。
             </p>
           </div>
 

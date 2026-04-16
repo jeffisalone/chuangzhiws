@@ -111,7 +111,7 @@ onMounted(() => {
         </div>
         <div class="failure-meta" aria-label="当前用户">
           <span :class="{ checking: isVerifyingSession }"></span>
-          <strong>{{ user.realName || user.accountName }}</strong>
+          <strong>{{ user.accountName }}</strong>
           <small>{{ levelLabel }} · {{ user.experience }} EXP</small>
         </div>
       </header>
@@ -138,7 +138,7 @@ onMounted(() => {
       <div v-else-if="projects.length" class="failure-list" aria-label="失败项目列表">
         <article v-for="project in projects" :key="project.id" class="failure-project">
           <div>
-            <span>{{ project.userName }}</span>
+            <span>工坊成员</span>
             <h2>{{ project.projectName }}</h2>
             <p>{{ formatDate(project.createdAt) }}</p>
           </div>
