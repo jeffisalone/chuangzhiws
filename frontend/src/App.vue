@@ -5,6 +5,7 @@ import ScrollReveal from './components/ScrollReveal.vue'
 import HomeFooter from './components/HomeFooter.vue'
 import FaultyTerminal from './components/FaultyTerminal.vue'
 import DamingbaiWorkbench from './components/DamingbaiWorkbench.vue'
+import PromptAssistantWorkbench from './components/PromptAssistantWorkbench.vue'
 import { AuthRequestError, logout, verifySession, type AuthUser } from './services/auth'
 
 type Slide = {
@@ -14,7 +15,7 @@ type Slide = {
 }
 
 type AuthMode = 'login' | 'register'
-type PageView = 'home' | 'dashboard' | 'damingbai'
+type PageView = 'home' | 'dashboard' | 'damingbai' | 'promptAssistant'
 
 type UserMenuItem = {
   label: string
@@ -63,6 +64,7 @@ const userMenuRef = ref<HTMLElement | null>(null)
 const userMenuItems = [
   { label: 'Dashboard', detail: '工作台总览', view: 'dashboard' },
   { label: '大明白', detail: 'AI 问答工作台', view: 'damingbai' },
+  { label: '提示词助手', detail: '图片/视频提示词优化', view: 'promptAssistant' },
   { label: 'AIGC教程', detail: '生成式智能课程', target: 'knowledge' },
   { label: '失败的Man', detail: '复盘与经验库', target: 'knowledge' },
   { label: '爬虫靶机', detail: '实战训练环境', target: 'knowledge' },
@@ -73,6 +75,7 @@ const userMenuItems = [
 
 const dashboardModules = [
   { title: '大明白', tag: 'AI', text: '连接 SiliconFlow Qwen 模型，用流式输出处理课程、项目和排错问题。', view: 'damingbai' },
+  { title: '提示词助手', tag: 'Prompt', text: '使用 stepfun-ai/step3 和 CO-STAR 框架，把简单想法改成专业图片或视频提示词。', view: 'promptAssistant' },
   { title: 'AIGC教程', tag: 'Course', text: '从提示词、工作流到工程落地，整理生成式智能学习路径。', target: 'knowledge' },
   { title: '失败的Man', tag: 'Review', text: '沉淀试错记录，把失败原因转成下一次可复用的判断。', target: 'knowledge' },
   { title: '爬虫靶机', tag: 'Lab', text: '围绕抓取、逆向、反反爬和数据清洗做实战训练。', target: 'knowledge' },
@@ -181,6 +184,21 @@ const openDamingbai = async () => {
   window.scrollTo({ top: 0 })
 }
 
+const openPromptAssistant = async () => {
+  closeUserMenu()
+  const user = await verifyCurrentUser()
+
+  if (!user) {
+    openAuth('login')
+    return
+  }
+
+  currentUser.value = user
+  activeView.value = 'promptAssistant'
+  authMode.value = null
+  window.scrollTo({ top: 0 })
+}
+
 const handleUserMenuItem = (item: UserMenuItem) => {
   if (item.view === 'dashboard') {
     void openDashboard()
@@ -192,6 +210,11 @@ const handleUserMenuItem = (item: UserMenuItem) => {
     return
   }
 
+  if (item.view === 'promptAssistant') {
+    void openPromptAssistant()
+    return
+  }
+
   if (item.target) {
     scrollToSection(item.target)
   }
@@ -200,6 +223,11 @@ const handleUserMenuItem = (item: UserMenuItem) => {
 const handleDashboardModule = (module: DashboardModule) => {
   if (module.view === 'damingbai') {
     void openDamingbai()
+    return
+  }
+
+  if (module.view === 'promptAssistant') {
+    void openPromptAssistant()
     return
   }
 
@@ -448,6 +476,10 @@ onBeforeUnmount(() => {
                 <h3>大明白</h3>
                 <p>接入 Qwen 大模型的流式 AI 工作台，随时处理课程、项目、排错和复盘问题。</p>
               </article>
+              <article class="resource-card prompt-card" @click="openPromptAssistant">
+                <h3>提示词助手</h3>
+                <p>接入 stepfun-ai/step3，用 CO-STAR 框架把简单想法优化成专业图片或视频提示词。</p>
+              </article>
               <article class="resource-card" @click="openAuth('login')">
                 <h3>AIGC教程</h3>
                 <p>掌握最新人工智能生成内容技术，利用大模型提高创作与工程效率。</p>
@@ -587,6 +619,14 @@ onBeforeUnmount(() => {
 
       <DamingbaiWorkbench
         v-if="activeView === 'damingbai' && currentUser && !authMode"
+        :user="currentUser"
+        :is-verifying-session="isVerifyingSession"
+        @verify="verifyCurrentUser"
+        @back-dashboard="openDashboard"
+      />
+
+      <PromptAssistantWorkbench
+        v-if="activeView === 'promptAssistant' && currentUser && !authMode"
         :user="currentUser"
         :is-verifying-session="isVerifyingSession"
         @verify="verifyCurrentUser"

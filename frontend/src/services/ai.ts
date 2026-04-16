@@ -13,6 +13,8 @@ export type AiStreamChunk = {
   token_usage?: number
 }
 
+export type PromptAssistantKind = 'auto' | 'image' | 'video'
+
 type AiErrorResponse = {
   success: false
   errors?: Array<{
@@ -30,14 +32,32 @@ export async function streamDamingbaiChat(
   onChunk: (chunk: AiStreamChunk) => void,
   signal?: AbortSignal,
 ): Promise<void> {
-  const response = await fetch(`${API_BASE_URL}/ai/chat`, {
+  return streamNdjsonResponse('/ai/chat', { messages }, onChunk, signal)
+}
+
+export async function streamPromptAssistant(
+  prompt: string,
+  kind: PromptAssistantKind,
+  onChunk: (chunk: AiStreamChunk) => void,
+  signal?: AbortSignal,
+): Promise<void> {
+  return streamNdjsonResponse('/ai/prompt-assistant', { prompt, kind }, onChunk, signal)
+}
+
+async function streamNdjsonResponse(
+  path: '/ai/chat' | '/ai/prompt-assistant',
+  payload: Record<string, unknown>,
+  onChunk: (chunk: AiStreamChunk) => void,
+  signal?: AbortSignal,
+): Promise<void> {
+  const response = await fetch(`${API_BASE_URL}${path}`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
       Accept: 'application/x-ndjson',
     },
     credentials: 'include',
-    body: JSON.stringify({ messages }),
+    body: JSON.stringify(payload),
     signal,
   })
 
