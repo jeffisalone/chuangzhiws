@@ -61,12 +61,6 @@ const userMenuItems = [
   { label: '开源项目库', detail: '可复用代码资产', target: 'projects' },
 ] satisfies UserMenuItem[]
 
-const dashboardStats = [
-  { label: '已解锁模块', value: '7', detail: '覆盖课程、复盘、靶机和项目库' },
-  { label: '会话状态', value: 'Live', detail: '每 60 秒自动验证一次' },
-  { label: '今日入口', value: '4', detail: '推荐从 Dashboard 开始' },
-] satisfies Array<{ label: string; value: string; detail: string }>
-
 const dashboardModules = [
   { title: 'AIGC教程', tag: 'Course', text: '从提示词、工作流到工程落地，整理生成式智能学习路径。', target: 'knowledge' },
   { title: '失败的Man', tag: 'Review', text: '沉淀试错记录，把失败原因转成下一次可复用的判断。', target: 'knowledge' },
@@ -75,6 +69,44 @@ const dashboardModules = [
 ] satisfies Array<{ title: string; tag: string; text: string; target: string }>
 
 const currentSlide = computed<Slide>(() => slides[activeSlide.value] ?? slides[0])
+const maxLevel = 60
+const currentExperienceInLevel = computed(() => {
+  if (!currentUser.value) {
+    return 0
+  }
+
+  return Math.max(0, currentUser.value.experience - currentUser.value.currentLevelExperience)
+})
+const requiredExperienceInLevel = computed(() => {
+  if (!currentUser.value || currentUser.value.level >= maxLevel) {
+    return 0
+  }
+
+  return Math.max(1, currentUser.value.nextLevelExperience - currentUser.value.currentLevelExperience)
+})
+const experienceToNextLevel = computed(() => {
+  if (!currentUser.value || currentUser.value.level >= maxLevel) {
+    return 0
+  }
+
+  return Math.max(0, currentUser.value.nextLevelExperience - currentUser.value.experience)
+})
+const dashboardStats = computed(() => [
+  {
+    label: '当前等级',
+    value: currentUser.value ? `Lv.${currentUser.value.level}` : 'Lv.1',
+    detail: `满级 Lv.${maxLevel}`,
+  },
+  {
+    label: '总经验',
+    value: `${currentUser.value?.experience ?? 0}`,
+    detail:
+      currentUser.value?.level === maxLevel
+        ? '已达到满级'
+        : `距离升级还需 ${experienceToNextLevel.value} EXP`,
+  },
+  { label: '会话状态', value: 'Live', detail: '每 60 秒自动验证一次' },
+])
 const isHomeVisible = computed(
   () => activeView.value === 'home' && (!authMode.value || isEnteringAuth.value || isReturningHome.value),
 )
@@ -466,6 +498,31 @@ onBeforeUnmount(() => {
             </article>
           </div>
 
+          <section class="experience-panel" aria-labelledby="experience-title">
+            <div class="experience-ring">
+              <strong>Lv.{{ currentUser.level }}</strong>
+              <span>/ {{ maxLevel }}</span>
+            </div>
+            <div class="experience-copy">
+              <div class="experience-title-row">
+                <div>
+                  <span class="experience-kicker">Experience</span>
+                  <h2 id="experience-title">经验成长</h2>
+                </div>
+                <strong>{{ currentUser.experience }} EXP</strong>
+              </div>
+              <div class="experience-bar" role="progressbar" :aria-valuenow="currentUser.levelProgress" aria-valuemin="0" aria-valuemax="100">
+                <span :style="{ width: `${currentUser.levelProgress}%` }"></span>
+              </div>
+              <p v-if="currentUser.level >= maxLevel">
+                已达到满级，继续完成模块会记录在成长档案中。
+              </p>
+              <p v-else>
+                本级进度 {{ currentExperienceInLevel }} / {{ requiredExperienceInLevel }} EXP，距离 Lv.{{ currentUser.level + 1 }} 还需 {{ experienceToNextLevel }} EXP。
+              </p>
+            </div>
+          </section>
+
           <div class="dashboard-section-heading">
             <h2>快捷入口</h2>
             <p>选择一个模块继续推进。</p>
@@ -685,6 +742,90 @@ onBeforeUnmount(() => {
 .dashboard-stat p,
 .dashboard-module p,
 .dashboard-section-heading p {
+  margin: 0;
+  color: #5b6168;
+  line-height: 1.7;
+}
+
+.experience-panel {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 24px;
+  margin-top: 24px;
+  padding: 26px;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  background: #ffffff;
+}
+
+.experience-ring {
+  display: grid;
+  place-items: center;
+  align-content: center;
+  width: 126px;
+  aspect-ratio: 1;
+  border: 10px solid #101214;
+  border-radius: 50%;
+  color: #101214;
+}
+
+.experience-ring strong {
+  font-size: 26px;
+  line-height: 1;
+}
+
+.experience-ring span {
+  color: #5b6168;
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.experience-copy {
+  display: grid;
+  align-content: center;
+  gap: 14px;
+}
+
+.experience-title-row {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 18px;
+}
+
+.experience-kicker {
+  color: #2563eb;
+  font-size: 12px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.experience-title-row h2 {
+  color: #101214;
+  font-size: 34px;
+}
+
+.experience-title-row strong {
+  color: #101214;
+  font-size: 18px;
+}
+
+.experience-bar {
+  height: 12px;
+  overflow: hidden;
+  border-radius: 8px;
+  background: #e5e7eb;
+}
+
+.experience-bar span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: #2563eb;
+  transition: width 0.35s ease;
+}
+
+.experience-copy p {
   margin: 0;
   color: #5b6168;
   line-height: 1.7;
@@ -1593,6 +1734,19 @@ h3 {
   .dashboard-stats,
   .dashboard-modules {
     grid-template-columns: 1fr;
+  }
+
+  .experience-panel {
+    grid-template-columns: 1fr;
+  }
+
+  .experience-ring {
+    width: 112px;
+  }
+
+  .experience-title-row {
+    align-items: flex-start;
+    flex-direction: column;
   }
 
   .dashboard-section-heading {

@@ -10,6 +10,11 @@ export type AuthUser = {
   studentId: string
   realName: string
   createdAt: string
+  experience: number
+  level: number
+  currentLevelExperience: number
+  nextLevelExperience: number
+  levelProgress: number
 }
 
 export type AuthResponse = {
