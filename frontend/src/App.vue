@@ -13,11 +13,13 @@ type Slide = {
 }
 
 type AuthMode = 'login' | 'register'
+type PageView = 'home' | 'dashboard'
 
 type UserMenuItem = {
   label: string
   detail: string
-  target: string
+  target?: string
+  view?: PageView
 }
 
 const slides = [
@@ -39,6 +41,7 @@ const slides = [
 ] satisfies [Slide, ...Slide[]]
 
 const activeSlide = ref(0)
+const activeView = ref<PageView>('home')
 const authMode = ref<AuthMode | null>(null)
 const isEnteringAuth = ref(false)
 const isReturningHome = ref(false)
@@ -49,7 +52,7 @@ const isSigningOut = ref(false)
 const userMenuRef = ref<HTMLElement | null>(null)
 
 const userMenuItems = [
-  { label: 'Dashboard', detail: '工作台总览', target: 'studio' },
+  { label: 'Dashboard', detail: '工作台总览', view: 'dashboard' },
   { label: 'AIGC教程', detail: '生成式智能课程', target: 'knowledge' },
   { label: '失败的Man', detail: '复盘与经验库', target: 'knowledge' },
   { label: '爬虫靶机', detail: '实战训练环境', target: 'knowledge' },
@@ -58,8 +61,23 @@ const userMenuItems = [
   { label: '开源项目库', detail: '可复用代码资产', target: 'projects' },
 ] satisfies UserMenuItem[]
 
+const dashboardStats = [
+  { label: '已解锁模块', value: '7', detail: '覆盖课程、复盘、靶机和项目库' },
+  { label: '会话状态', value: 'Live', detail: '每 60 秒自动验证一次' },
+  { label: '今日入口', value: '4', detail: '推荐从 Dashboard 开始' },
+] satisfies Array<{ label: string; value: string; detail: string }>
+
+const dashboardModules = [
+  { title: 'AIGC教程', tag: 'Course', text: '从提示词、工作流到工程落地，整理生成式智能学习路径。', target: 'knowledge' },
+  { title: '失败的Man', tag: 'Review', text: '沉淀试错记录，把失败原因转成下一次可复用的判断。', target: 'knowledge' },
+  { title: '爬虫靶机', tag: 'Lab', text: '围绕抓取、逆向、反反爬和数据清洗做实战训练。', target: 'knowledge' },
+  { title: '项目重生计划', tag: 'Build', text: '接手未完成项目，在重构、修复和发布中推进作品。', target: 'projects' },
+] satisfies Array<{ title: string; tag: string; text: string; target: string }>
+
 const currentSlide = computed<Slide>(() => slides[activeSlide.value] ?? slides[0])
-const isHomeVisible = computed(() => !authMode.value || isEnteringAuth.value || isReturningHome.value)
+const isHomeVisible = computed(
+  () => activeView.value === 'home' && (!authMode.value || isEnteringAuth.value || isReturningHome.value),
+)
 const isAuthHeader = computed(() => Boolean(authMode.value && !isReturningHome.value))
 
 let carouselTimer: number | undefined
@@ -71,11 +89,13 @@ const selectSlide = (index: number) => {
 }
 
 const openAuth = (mode: AuthMode) => {
+  activeView.value = 'home'
   authMode.value = mode
   window.scrollTo({ top: 0 })
 }
 
 const showHome = () => {
+  activeView.value = 'home'
   authMode.value = null
   isUserMenuOpen.value = false
   window.scrollTo({ top: 0 })
@@ -88,6 +108,32 @@ const scrollToSection = (target: string) => {
   })
 }
 
+const openDashboard = async () => {
+  closeUserMenu()
+  const user = await verifyCurrentUser()
+
+  if (!user) {
+    openAuth('login')
+    return
+  }
+
+  currentUser.value = user
+  activeView.value = 'dashboard'
+  authMode.value = null
+  window.scrollTo({ top: 0 })
+}
+
+const handleUserMenuItem = (item: UserMenuItem) => {
+  if (item.view === 'dashboard') {
+    void openDashboard()
+    return
+  }
+
+  if (item.target) {
+    scrollToSection(item.target)
+  }
+}
+
 const toggleUserMenu = () => {
   isUserMenuOpen.value = !isUserMenuOpen.value
 }
@@ -96,19 +142,25 @@ const closeUserMenu = () => {
   isUserMenuOpen.value = false
 }
 
-const verifyCurrentUser = async () => {
+const verifyCurrentUser = async (): Promise<AuthUser | null> => {
   isVerifyingSession.value = true
 
   try {
     const response = await verifySession()
     currentUser.value = response.result.user
+    return response.result.user
   } catch (error) {
     if (error instanceof AuthRequestError && error.status === 401) {
       currentUser.value = null
       isUserMenuOpen.value = false
+      if (activeView.value === 'dashboard') {
+        activeView.value = 'home'
+      }
     } else {
       console.warn('Session verification failed', error)
     }
+
+    return null
   } finally {
     isVerifyingSession.value = false
   }
@@ -204,7 +256,7 @@ onBeforeUnmount(() => {
               class="dropdown-item"
               type="button"
               role="menuitem"
-              @click="scrollToSection(item.target)"
+              @click="handleUserMenuItem(item)"
             >
               <span>{{ item.label }}</span>
               <small>{{ item.detail }}</small>
@@ -383,6 +435,53 @@ onBeforeUnmount(() => {
         />
       </div>
 
+      <section
+        v-if="activeView === 'dashboard' && currentUser && !authMode"
+        class="dashboard-page"
+        aria-labelledby="dashboard-title"
+      >
+        <div class="dashboard-inner">
+          <div class="dashboard-heading">
+            <p class="eyebrow dark">Dashboard</p>
+            <h1 id="dashboard-title">工作台总览</h1>
+            <p>
+              {{ currentUser.realName || currentUser.accountName }}，从这里进入课程、复盘、靶机和项目库。
+            </p>
+          </div>
+
+          <div class="dashboard-status" aria-live="polite">
+            <span class="breath-dot" :class="{ checking: isVerifyingSession }"></span>
+            <div>
+              <strong>{{ isVerifyingSession ? '正在验证登录状态' : '登录状态已验证' }}</strong>
+              <span>账号 {{ currentUser.accountName }} · 学号 {{ currentUser.studentId }}</span>
+            </div>
+            <button type="button" @click="verifyCurrentUser">重新验证</button>
+          </div>
+
+          <div class="dashboard-stats" aria-label="工作台指标">
+            <article v-for="stat in dashboardStats" :key="stat.label" class="dashboard-stat">
+              <span>{{ stat.label }}</span>
+              <strong>{{ stat.value }}</strong>
+              <p>{{ stat.detail }}</p>
+            </article>
+          </div>
+
+          <div class="dashboard-section-heading">
+            <h2>快捷入口</h2>
+            <p>选择一个模块继续推进。</p>
+          </div>
+
+          <div class="dashboard-modules">
+            <article v-for="module in dashboardModules" :key="module.title" class="dashboard-module">
+              <span>{{ module.tag }}</span>
+              <h3>{{ module.title }}</h3>
+              <p>{{ module.text }}</p>
+              <button type="button" @click="scrollToSection(module.target)">进入模块</button>
+            </article>
+          </div>
+        </div>
+      </section>
+
       <div
         v-if="authMode"
         class="auth-layer"
@@ -460,6 +559,178 @@ onBeforeUnmount(() => {
 
 .home-page {
   min-height: 100vh;
+}
+
+.dashboard-page {
+  min-height: 100vh;
+  padding: 128px clamp(20px, 7vw, 96px) 86px;
+  background:
+    linear-gradient(180deg, #f6f8f7 0%, #ffffff 42%),
+    #ffffff;
+  color: #101214;
+}
+
+.dashboard-inner {
+  width: min(1180px, 100%);
+  margin: 0 auto;
+}
+
+.dashboard-heading {
+  display: grid;
+  gap: 16px;
+  max-width: 760px;
+}
+
+.dashboard-heading h1 {
+  color: #101214;
+  font-size: 64px;
+  line-height: 1.02;
+}
+
+.dashboard-heading p {
+  margin: 0;
+  color: #5b6168;
+  font-size: 20px;
+  line-height: 1.7;
+}
+
+.dashboard-status {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  margin-top: 34px;
+  padding: 18px;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  background: #101214;
+  color: #ffffff;
+}
+
+.dashboard-status > div {
+  display: grid;
+  flex: 1;
+  gap: 4px;
+}
+
+.dashboard-status strong {
+  font-size: 16px;
+}
+
+.dashboard-status span {
+  color: rgba(255, 255, 255, 0.68);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.dashboard-status button,
+.dashboard-module button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 38px;
+  padding: 0 14px;
+  border-radius: 8px;
+  font-weight: 900;
+  transition:
+    background-color 0.2s ease,
+    color 0.2s ease,
+    transform 0.2s ease;
+}
+
+.dashboard-status button {
+  border: 1px solid rgba(255, 255, 255, 0.24);
+  color: #ffffff;
+}
+
+.dashboard-status button:hover,
+.dashboard-module button:hover {
+  transform: translateY(-1px);
+}
+
+.dashboard-stats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 18px;
+  margin-top: 24px;
+}
+
+.dashboard-stat,
+.dashboard-module {
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  background: #ffffff;
+}
+
+.dashboard-stat {
+  display: grid;
+  gap: 8px;
+  padding: 24px;
+}
+
+.dashboard-stat span,
+.dashboard-module span {
+  color: #2563eb;
+  font-size: 12px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.dashboard-stat strong {
+  color: #101214;
+  font-size: 36px;
+  line-height: 1;
+}
+
+.dashboard-stat p,
+.dashboard-module p,
+.dashboard-section-heading p {
+  margin: 0;
+  color: #5b6168;
+  line-height: 1.7;
+}
+
+.dashboard-section-heading {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 20px;
+  margin-top: 54px;
+}
+
+.dashboard-section-heading h2 {
+  color: #101214;
+  font-size: 42px;
+}
+
+.dashboard-modules {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px;
+  margin-top: 24px;
+}
+
+.dashboard-module {
+  display: grid;
+  gap: 12px;
+  padding: 28px;
+}
+
+.dashboard-module h3 {
+  margin: 0;
+  color: #101214;
+  font-size: 26px;
+}
+
+.dashboard-module button {
+  justify-self: start;
+  margin-top: 8px;
+  background: #101214;
+  color: #ffffff;
+}
+
+.dashboard-module button:hover {
+  background: #1e293b;
 }
 
 .auth-layer {
@@ -1304,6 +1575,29 @@ h3 {
 
   .steps {
     grid-template-columns: 1fr;
+  }
+
+  .dashboard-page {
+    padding: 110px 20px 64px;
+  }
+
+  .dashboard-heading h1 {
+    font-size: 42px;
+  }
+
+  .dashboard-status {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .dashboard-stats,
+  .dashboard-modules {
+    grid-template-columns: 1fr;
+  }
+
+  .dashboard-section-heading {
+    align-items: flex-start;
+    flex-direction: column;
   }
 }
 
