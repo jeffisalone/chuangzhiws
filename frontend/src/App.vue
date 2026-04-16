@@ -4,7 +4,7 @@ import LoginRegister from './components/LoginRegister.vue'
 import ScrollReveal from './components/ScrollReveal.vue'
 import HomeFooter from './components/HomeFooter.vue'
 import FaultyTerminal from './components/FaultyTerminal.vue'
-import { AuthRequestError, verifySession, type AuthUser } from './services/auth'
+import { AuthRequestError, logout, verifySession, type AuthUser } from './services/auth'
 
 type Slide = {
   eyebrow: string
@@ -13,6 +13,12 @@ type Slide = {
 }
 
 type AuthMode = 'login' | 'register'
+
+type UserMenuItem = {
+  label: string
+  detail: string
+  target: string
+}
 
 const slides = [
   {
@@ -38,6 +44,19 @@ const isEnteringAuth = ref(false)
 const isReturningHome = ref(false)
 const currentUser = ref<AuthUser | null>(null)
 const isVerifyingSession = ref(true)
+const isUserMenuOpen = ref(false)
+const isSigningOut = ref(false)
+const userMenuRef = ref<HTMLElement | null>(null)
+
+const userMenuItems = [
+  { label: 'Dashboard', detail: '工作台总览', target: 'studio' },
+  { label: 'AIGC教程', detail: '生成式智能课程', target: 'knowledge' },
+  { label: '失败的Man', detail: '复盘与经验库', target: 'knowledge' },
+  { label: '爬虫靶机', detail: '实战训练环境', target: 'knowledge' },
+  { label: '数据分析案例', detail: '真实数据练习', target: 'knowledge' },
+  { label: '烂尾楼项目', detail: '项目重生计划', target: 'projects' },
+  { label: '开源项目库', detail: '可复用代码资产', target: 'projects' },
+] satisfies UserMenuItem[]
 
 const currentSlide = computed<Slide>(() => slides[activeSlide.value] ?? slides[0])
 const isHomeVisible = computed(() => !authMode.value || isEnteringAuth.value || isReturningHome.value)
@@ -58,7 +77,23 @@ const openAuth = (mode: AuthMode) => {
 
 const showHome = () => {
   authMode.value = null
+  isUserMenuOpen.value = false
   window.scrollTo({ top: 0 })
+}
+
+const scrollToSection = (target: string) => {
+  showHome()
+  window.requestAnimationFrame(() => {
+    document.getElementById(target)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  })
+}
+
+const toggleUserMenu = () => {
+  isUserMenuOpen.value = !isUserMenuOpen.value
+}
+
+const closeUserMenu = () => {
+  isUserMenuOpen.value = false
 }
 
 const verifyCurrentUser = async () => {
@@ -70,6 +105,7 @@ const verifyCurrentUser = async () => {
   } catch (error) {
     if (error instanceof AuthRequestError && error.status === 401) {
       currentUser.value = null
+      isUserMenuOpen.value = false
     } else {
       console.warn('Session verification failed', error)
     }
@@ -84,6 +120,31 @@ const handleAuthenticated = (user: AuthUser) => {
   void verifyCurrentUser()
 }
 
+const handleLogout = async () => {
+  if (isSigningOut.value) {
+    return
+  }
+
+  isSigningOut.value = true
+
+  try {
+    await logout()
+  } catch (error) {
+    console.warn('Logout failed', error)
+  } finally {
+    currentUser.value = null
+    isUserMenuOpen.value = false
+    isSigningOut.value = false
+    showHome()
+  }
+}
+
+const handleDocumentClick = (event: MouseEvent) => {
+  if (!userMenuRef.value?.contains(event.target as Node)) {
+    closeUserMenu()
+  }
+}
+
 onMounted(() => {
   carouselTimer = window.setInterval(() => {
     activeSlide.value = (activeSlide.value + 1) % slides.length
@@ -92,12 +153,14 @@ onMounted(() => {
   sessionVerifyTimer = window.setInterval(() => {
     void verifyCurrentUser()
   }, 60000)
+  document.addEventListener('click', handleDocumentClick)
 })
 
 onBeforeUnmount(() => {
   window.clearInterval(carouselTimer)
   window.clearInterval(sessionVerifyTimer)
   window.clearTimeout(pageTransitionTimer)
+  document.removeEventListener('click', handleDocumentClick)
 })
 </script>
 
@@ -116,10 +179,48 @@ onBeforeUnmount(() => {
       </nav>
 
       <div v-if="!isAuthHeader" class="auth-actions" aria-label="账户入口">
-        <div v-if="currentUser" class="session-pill" aria-live="polite">
-          <span class="breath-dot" :class="{ checking: isVerifyingSession }"></span>
-          <span class="session-name">{{ currentUser.accountName }}</span>
-          <span class="session-state">{{ isVerifyingSession ? 'Checking' : 'Verified' }}</span>
+        <div v-if="currentUser" ref="userMenuRef" class="user-menu">
+          <button
+            class="session-pill"
+            type="button"
+            :aria-expanded="isUserMenuOpen"
+            aria-haspopup="menu"
+            @click.stop="toggleUserMenu"
+          >
+            <span class="breath-dot" :class="{ checking: isVerifyingSession }"></span>
+            <span class="session-name">{{ currentUser.accountName }}</span>
+            <span class="session-state">{{ isVerifyingSession ? 'Checking' : 'Verified' }}</span>
+            <span class="menu-chevron" :class="{ open: isUserMenuOpen }">⌄</span>
+          </button>
+
+          <div v-if="isUserMenuOpen" class="user-dropdown" role="menu">
+            <div class="dropdown-header">
+              <span class="dropdown-kicker">Signed in</span>
+              <strong>{{ currentUser.accountName }}</strong>
+            </div>
+            <button
+              v-for="item in userMenuItems"
+              :key="item.label"
+              class="dropdown-item"
+              type="button"
+              role="menuitem"
+              @click="scrollToSection(item.target)"
+            >
+              <span>{{ item.label }}</span>
+              <small>{{ item.detail }}</small>
+            </button>
+            <div class="dropdown-divider"></div>
+            <button
+              class="dropdown-item logout-item"
+              type="button"
+              role="menuitem"
+              :disabled="isSigningOut"
+              @click="handleLogout"
+            >
+              <span>{{ isSigningOut ? '退出中...' : '退出登录' }}</span>
+              <small>清除当前会话</small>
+            </button>
+          </div>
         </div>
         <button
           v-if="!currentUser"
@@ -688,6 +789,11 @@ onBeforeUnmount(() => {
   right: 0;
 }
 
+.user-menu {
+  position: relative;
+  z-index: 5;
+}
+
 .session-pill {
   display: inline-flex;
   align-items: center;
@@ -699,6 +805,17 @@ onBeforeUnmount(() => {
   background: rgba(5, 8, 8, 0.32);
   color: #ffffff;
   backdrop-filter: blur(14px);
+  cursor: pointer;
+  transition:
+    background-color 0.2s ease,
+    border-color 0.2s ease,
+    transform 0.2s ease;
+}
+
+.session-pill:hover {
+  border-color: rgba(255, 255, 255, 0.52);
+  background: rgba(5, 8, 8, 0.48);
+  transform: translateY(-1px);
 }
 
 .breath-dot {
@@ -727,6 +844,110 @@ onBeforeUnmount(() => {
   color: rgba(255, 255, 255, 0.68);
   font-size: 12px;
   font-weight: 800;
+}
+
+.menu-chevron {
+  color: rgba(255, 255, 255, 0.72);
+  font-size: 16px;
+  line-height: 1;
+  transition: transform 0.2s ease;
+}
+
+.menu-chevron.open {
+  transform: rotate(180deg);
+}
+
+.user-dropdown {
+  position: absolute;
+  top: calc(100% + 12px);
+  right: 0;
+  width: 280px;
+  padding: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 8px;
+  background: rgba(9, 14, 18, 0.94);
+  box-shadow: 0 22px 60px rgba(0, 0, 0, 0.28);
+  backdrop-filter: blur(18px);
+  animation: dropdownIn 0.18s ease both;
+}
+
+.dropdown-header {
+  display: grid;
+  gap: 4px;
+  padding: 12px 12px 10px;
+}
+
+.dropdown-kicker {
+  color: rgba(255, 255, 255, 0.54);
+  font-size: 11px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.dropdown-header strong {
+  color: #ffffff;
+  font-size: 15px;
+  overflow-wrap: anywhere;
+}
+
+.dropdown-item {
+  display: grid;
+  width: 100%;
+  min-height: 54px;
+  padding: 9px 12px;
+  border-radius: 8px;
+  color: #ffffff;
+  text-align: left;
+  transition:
+    background-color 0.2s ease,
+    transform 0.2s ease;
+}
+
+.dropdown-item:hover {
+  background: rgba(255, 255, 255, 0.1);
+  transform: translateX(2px);
+}
+
+.dropdown-item span {
+  font-size: 14px;
+  font-weight: 900;
+}
+
+.dropdown-item small {
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.dropdown-divider {
+  height: 1px;
+  margin: 8px 6px;
+  background: rgba(255, 255, 255, 0.14);
+}
+
+.logout-item {
+  color: #fecaca;
+}
+
+.logout-item small {
+  color: rgba(254, 202, 202, 0.72);
+}
+
+.logout-item:disabled {
+  cursor: wait;
+  opacity: 0.66;
+  transform: none;
+}
+
+@keyframes dropdownIn {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 @keyframes userBreath {
