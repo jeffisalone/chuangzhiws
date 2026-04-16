@@ -103,6 +103,7 @@ async function getPublicKey(): Promise<CryptoKey> {
     const response = await fetch(`${API_BASE_URL}/auth/public-key`, {
       headers: { Accept: 'application/json' },
       credentials: 'include',
+      cache: 'no-store',
     })
 
     if (!response.ok) {
@@ -147,6 +148,7 @@ async function encryptPayload(payload: Record<string, unknown>): Promise<Encrypt
 async function submitAuth(
   path: '/auth/login' | '/auth/register',
   payload: Record<string, unknown>,
+  retryWithFreshKey = true,
 ): Promise<AuthResponse> {
   const response = await fetch(`${API_BASE_URL}${path}`, {
     method: 'POST',
@@ -160,6 +162,13 @@ async function submitAuth(
   const body = (await response.json()) as AuthResponse | AuthErrorResponse
 
   if (!response.ok || !body.success) {
+    const firstError = !body.success ? body.errors?.[0] : undefined
+
+    if (retryWithFreshKey && response.status === 400 && firstError?.code === 'INVALID_AUTH_PAYLOAD') {
+      publicKeyPromise = null
+      return submitAuth(path, payload, false)
+    }
+
     const message =
       !body.success && body.errors?.[0]?.message ? body.errors[0].message : '请求失败，请稍后重试'
     throw new AuthRequestError(message, response.status)
