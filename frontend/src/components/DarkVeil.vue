@@ -3,7 +3,7 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, onUnmounted, useTemplateRef, watch } from 'vue'
+import { onMounted, onUnmounted, useTemplateRef, watch, ref } from 'vue'
 import { Mesh, Program, Renderer, Triangle, Vec2 } from 'ogl'
 
 interface DarkVeilProps {
@@ -23,10 +23,11 @@ const props = withDefaults(defineProps<DarkVeilProps>(), {
   speed: 0.5,
   scanlineFrequency: 0,
   warpAmount: 0,
-  resolutionScale: 1,
+  resolutionScale: 0.75,
 })
 
 const canvasRef = useTemplateRef<HTMLCanvasElement>('canvasRef')
+const isVisible = ref(false)
 
 const vertex = `
 attribute vec2 position;
@@ -129,23 +130,34 @@ const cleanup = () => {
 
 const loop = () => {
   if (!program || !renderer || !mesh) return
-
-  program.uniforms.uTime.value = ((performance.now() - start) / 1000) * props.speed
-  program.uniforms.uHueShift.value = props.hueShift
-  program.uniforms.uNoise.value = props.noiseIntensity
-  program.uniforms.uScan.value = props.scanlineIntensity
-  program.uniforms.uScanFreq.value = props.scanlineFrequency
-  program.uniforms.uWarp.value = props.warpAmount
-  renderer.render({ scene: mesh })
+  
+  // 仅在可见时执行渲染
+  if (isVisible.value) {
+    program.uniforms.uTime.value = ((performance.now() - start) / 1000) * props.speed
+    program.uniforms.uHueShift.value = props.hueShift
+    program.uniforms.uNoise.value = props.noiseIntensity
+    program.uniforms.uScan.value = props.scanlineIntensity
+    program.uniforms.uScanFreq.value = props.scanlineFrequency
+    program.uniforms.uWarp.value = props.warpAmount
+    renderer.render({ scene: mesh })
+  }
+  
   frame = requestAnimationFrame(loop)
 }
 
 onMounted(() => {
   if (!canvasRef.value) return
 
+  // 监听可见性以暂停渲染
+  const observer = new IntersectionObserver(([entry]) => {
+    isVisible.value = entry.isIntersecting
+  }, { threshold: 0.01 })
+  observer.observe(canvasRef.value)
+
   renderer = new Renderer({
-    dpr: Math.min(window.devicePixelRatio, 2),
+    dpr: Math.min(window.devicePixelRatio, 1.5), // 降低 DPR 限制
     canvas: canvasRef.value,
+    antialias: false,
   })
 
   const gl = renderer.gl
