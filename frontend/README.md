@@ -24,9 +24,8 @@
 
 - `src/services/auth.ts`：登录/注册 API、RSA/AES 加密、公钥获取与重试逻辑
 - `src/services/ai.ts`：大明白 AI 流式请求，调用后端 `/ai/chat`
-- `src/services/markdown.ts`：本地 Markdown 渲染器，支持 `.md` / `.MD` 文档预览
+- `src/services/markdown.ts`：本地 Markdown 渲染器，用于大明白 AI 回复预览
 - `src/components/DamingbaiWorkbench.vue`：大明白聊天工作台页面
-- `src/components/MarkdownDocs.vue`：MD 文档打开、编辑和预览页面
 - `src/components/LoginRegister.vue`：登录/注册表单
 - `src/App.vue`：页面入口和登录/注册视图切换
 - `src/main.ts`：Vue 应用入口
@@ -93,17 +92,7 @@ POST https://d1.0rz.my/ai/chat
 
 请求使用 `credentials: 'include'` 携带 HTTP-only session cookie。前端只处理后端返回的 NDJSON 流式 chunk，不保存或暴露 SiliconFlow 密钥。
 
-## MD 文档页面
-
-入口：
-
-- 右上角用户名下拉框中的“MD文档”
-- Dashboard 快捷入口中的“MD文档”
-- 首页资源区“MD文档”卡片
-
-进入页面前会调用 `GET /auth/session` 验证登录状态。页面支持选择 `.md`、`.MD`、`.markdown` 文件，文件内容只在浏览器本地读取，不上传到后端。
-
-Markdown 渲染在 `src/services/markdown.ts` 中完成。渲染前会转义 HTML，再处理常见 Markdown 语法，包括标题、段落、粗体、斜体、删除线、链接、引用、列表、代码块、分割线和表格。
+AI 回复会使用 `src/services/markdown.ts` 渲染 Markdown，支持标题、列表、引用、代码块、表格和链接；用户输入气泡保持纯文本显示。
 
 ## Auth 调用流程
 

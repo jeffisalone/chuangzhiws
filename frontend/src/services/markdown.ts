@@ -1,5 +1,3 @@
-const markdownExtensions = ['.md', '.markdown']
-
 function escapeHtml(value: string): string {
   return value
     .replace(/&/g, '&amp;')
@@ -87,12 +85,6 @@ function isTableStart(lines: string[], index: number): boolean {
       divider?.includes('|') &&
       /^\s*\|?\s*:?-{3,}:?\s*(\|\s*:?-{3,}:?\s*)+\|?\s*$/.test(divider),
   )
-}
-
-export function isMarkdownFile(file: File): boolean {
-  const name = file.name.toLowerCase()
-
-  return markdownExtensions.some((extension) => name.endsWith(extension))
 }
 
 export function renderMarkdown(source: string): string {

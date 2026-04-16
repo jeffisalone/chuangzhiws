@@ -2,6 +2,7 @@
 import { computed, nextTick, onBeforeUnmount, ref } from 'vue'
 import { AuthRequestError, type AuthUser } from '../services/auth'
 import { streamDamingbaiChat, type AiMessage } from '../services/ai'
+import { renderMarkdown } from '../services/markdown'
 
 type ChatItem = {
   id: number
@@ -36,6 +37,10 @@ let activeController: AbortController | null = null
 
 const canSend = computed(() => input.value.trim().length > 0 && !isStreaming.value)
 const levelLabel = computed(() => `Lv.${props.user.level}`)
+
+const renderAssistantMessage = (content: string): string => {
+  return content.trim() ? renderMarkdown(content) : '<p>正在输出...</p>'
+}
 
 const scrollToBottom = () => {
   void nextTick(() => {
@@ -182,7 +187,14 @@ onBeforeUnmount(() => {
               :class="`message-${message.role}`"
             >
               <span>{{ message.role === 'user' ? '你' : '大明白' }}</span>
-              <p>{{ message.content || '正在输出...' }}</p>
+              <div
+                v-if="message.role === 'assistant'"
+                class="message-content markdown-message"
+                v-html="renderAssistantMessage(message.content)"
+              ></div>
+              <div v-else class="message-content plain-message">
+                {{ message.content || '正在输出...' }}
+              </div>
             </article>
           </div>
 
@@ -388,19 +400,141 @@ onBeforeUnmount(() => {
   font-weight: 900;
 }
 
-.message p {
+.message-content {
   margin: 0;
   padding: 14px 16px;
   border-radius: 8px;
   background: rgba(255, 255, 255, 0.08);
   color: #ffffff;
   line-height: 1.75;
+}
+
+.plain-message {
   white-space: pre-wrap;
 }
 
-.message-user p {
+.message-user .message-content {
   background: #ffffff;
   color: #101214;
+}
+
+.markdown-message :deep(h1),
+.markdown-message :deep(h2),
+.markdown-message :deep(h3),
+.markdown-message :deep(h4),
+.markdown-message :deep(h5),
+.markdown-message :deep(h6) {
+  margin: 0.95em 0 0.45em;
+  color: #ffffff;
+  line-height: 1.2;
+  letter-spacing: 0;
+}
+
+.markdown-message :deep(h1:first-child),
+.markdown-message :deep(h2:first-child),
+.markdown-message :deep(h3:first-child),
+.markdown-message :deep(p:first-child),
+.markdown-message :deep(pre:first-child),
+.markdown-message :deep(ul:first-child),
+.markdown-message :deep(ol:first-child),
+.markdown-message :deep(blockquote:first-child) {
+  margin-top: 0;
+}
+
+.markdown-message :deep(h1) {
+  font-size: 30px;
+}
+
+.markdown-message :deep(h2) {
+  font-size: 24px;
+}
+
+.markdown-message :deep(h3) {
+  font-size: 20px;
+}
+
+.markdown-message :deep(p),
+.markdown-message :deep(ul),
+.markdown-message :deep(ol),
+.markdown-message :deep(blockquote),
+.markdown-message :deep(pre),
+.markdown-message :deep(table) {
+  margin: 0 0 14px;
+}
+
+.markdown-message :deep(p:last-child),
+.markdown-message :deep(ul:last-child),
+.markdown-message :deep(ol:last-child),
+.markdown-message :deep(blockquote:last-child),
+.markdown-message :deep(pre:last-child),
+.markdown-message :deep(table:last-child) {
+  margin-bottom: 0;
+}
+
+.markdown-message :deep(p),
+.markdown-message :deep(li) {
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.markdown-message :deep(ul),
+.markdown-message :deep(ol) {
+  padding-left: 1.35em;
+}
+
+.markdown-message :deep(a) {
+  color: #93c5fd;
+  font-weight: 900;
+}
+
+.markdown-message :deep(code) {
+  padding: 2px 5px;
+  border-radius: 6px;
+  background: rgba(147, 197, 253, 0.16);
+  color: #bfdbfe;
+}
+
+.markdown-message :deep(pre) {
+  overflow: auto;
+  padding: 14px;
+  border-radius: 8px;
+  background: #050808;
+  color: #ffffff;
+}
+
+.markdown-message :deep(pre code) {
+  padding: 0;
+  background: transparent;
+  color: inherit;
+}
+
+.markdown-message :deep(blockquote) {
+  padding: 10px 14px;
+  border-left: 4px solid #93c5fd;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.markdown-message :deep(table) {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.markdown-message :deep(th),
+.markdown-message :deep(td) {
+  padding: 9px 10px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  text-align: left;
+}
+
+.markdown-message :deep(th) {
+  background: rgba(255, 255, 255, 0.1);
+  color: #ffffff;
+}
+
+.markdown-message :deep(hr) {
+  margin: 18px 0;
+  border: 0;
+  border-top: 1px solid rgba(255, 255, 255, 0.18);
 }
 
 .composer {
