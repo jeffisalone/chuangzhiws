@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, watch } from 'vue'
 import DarkVeil from './DarkVeil.vue'
-import { AuthRequestError, login, registerUser } from '@/services/auth'
+import { AuthRequestError, login, registerUser, type AuthUser } from '@/services/auth'
 
 type AuthMode = 'login' | 'register'
 
@@ -17,6 +17,7 @@ const props = withDefaults(
 const emit = defineEmits<{
   (event: 'back-home'): void
   (event: 'mode-change', mode: AuthMode): void
+  (event: 'authenticated', user: AuthUser): void
 }>()
 
 const isLogin = ref(props.initialMode === 'login')
@@ -97,6 +98,7 @@ const handleSubmit = async () => {
       : `注册成功，欢迎 ${response.result.user.accountName}`
     password.value = ''
     confirmPassword.value = ''
+    emit('authenticated', response.result.user)
   } catch (error) {
     formError.value =
       error instanceof AuthRequestError ? error.message : '请求失败，请稍后重试。'

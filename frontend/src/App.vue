@@ -4,6 +4,7 @@ import LoginRegister from './components/LoginRegister.vue'
 import ScrollReveal from './components/ScrollReveal.vue'
 import HomeFooter from './components/HomeFooter.vue'
 import FaultyTerminal from './components/FaultyTerminal.vue'
+import { AuthRequestError, verifySession, type AuthUser } from './services/auth'
 
 type Slide = {
   eyebrow: string
@@ -35,6 +36,8 @@ const activeSlide = ref(0)
 const authMode = ref<AuthMode | null>(null)
 const isEnteringAuth = ref(false)
 const isReturningHome = ref(false)
+const currentUser = ref<AuthUser | null>(null)
+const isVerifyingSession = ref(true)
 
 const currentSlide = computed<Slide>(() => slides[activeSlide.value] ?? slides[0])
 const isHomeVisible = computed(() => !authMode.value || isEnteringAuth.value || isReturningHome.value)
@@ -42,6 +45,7 @@ const isAuthHeader = computed(() => Boolean(authMode.value && !isReturningHome.v
 
 let carouselTimer: number | undefined
 let pageTransitionTimer: number | undefined
+let sessionVerifyTimer: number | undefined
 
 const selectSlide = (index: number) => {
   activeSlide.value = index
@@ -57,14 +61,42 @@ const showHome = () => {
   window.scrollTo({ top: 0 })
 }
 
+const verifyCurrentUser = async () => {
+  isVerifyingSession.value = true
+
+  try {
+    const response = await verifySession()
+    currentUser.value = response.result.user
+  } catch (error) {
+    if (error instanceof AuthRequestError && error.status === 401) {
+      currentUser.value = null
+    } else {
+      console.warn('Session verification failed', error)
+    }
+  } finally {
+    isVerifyingSession.value = false
+  }
+}
+
+const handleAuthenticated = (user: AuthUser) => {
+  currentUser.value = user
+  showHome()
+  void verifyCurrentUser()
+}
+
 onMounted(() => {
   carouselTimer = window.setInterval(() => {
     activeSlide.value = (activeSlide.value + 1) % slides.length
   }, 4200)
+  void verifyCurrentUser()
+  sessionVerifyTimer = window.setInterval(() => {
+    void verifyCurrentUser()
+  }, 60000)
 })
 
 onBeforeUnmount(() => {
   window.clearInterval(carouselTimer)
+  window.clearInterval(sessionVerifyTimer)
   window.clearTimeout(pageTransitionTimer)
 })
 </script>
@@ -84,7 +116,13 @@ onBeforeUnmount(() => {
       </nav>
 
       <div v-if="!isAuthHeader" class="auth-actions" aria-label="账户入口">
+        <div v-if="currentUser" class="session-pill" aria-live="polite">
+          <span class="breath-dot" :class="{ checking: isVerifyingSession }"></span>
+          <span class="session-name">{{ currentUser.accountName }}</span>
+          <span class="session-state">{{ isVerifyingSession ? 'Checking' : 'Verified' }}</span>
+        </div>
         <button
+          v-if="!currentUser"
           class="auth-btn login-link"
           :class="{ active: authMode === 'login' }"
           type="button"
@@ -93,6 +131,7 @@ onBeforeUnmount(() => {
           登录
         </button>
         <button
+          v-if="!currentUser"
           class="auth-btn register-link"
           :class="{ active: authMode === 'register' }"
           type="button"
@@ -100,7 +139,7 @@ onBeforeUnmount(() => {
         >
           注册
         </button>
-        <div class="auth-indicator" :class="{ 'login-active': authMode === 'login', 'register-active': authMode === 'register' }"></div>
+        <div v-if="!currentUser" class="auth-indicator" :class="{ 'login-active': authMode === 'login', 'register-active': authMode === 'register' }"></div>
       </div>
     </header>
 
@@ -255,6 +294,7 @@ onBeforeUnmount(() => {
           :initial-mode="authMode"
           @back-home="showHome"
           @mode-change="authMode = $event"
+          @authenticated="handleAuthenticated"
         />
       </div>
     </main>
@@ -584,6 +624,7 @@ onBeforeUnmount(() => {
 .auth-actions {
   position: relative;
   display: flex;
+  align-items: center;
   justify-content: flex-end;
   gap: 10px;
   font-size: 14px;
@@ -645,6 +686,62 @@ onBeforeUnmount(() => {
 
 .auth-indicator.register-active {
   right: 0;
+}
+
+.session-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 40px;
+  padding: 8px 14px;
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  border-radius: 8px;
+  background: rgba(5, 8, 8, 0.32);
+  color: #ffffff;
+  backdrop-filter: blur(14px);
+}
+
+.breath-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #22c55e;
+  box-shadow: 0 0 0 rgba(34, 197, 94, 0.46);
+  animation: userBreath 1.8s ease-in-out infinite;
+}
+
+.breath-dot.checking {
+  background: #93c5fd;
+  animation-duration: 0.9s;
+}
+
+.session-name {
+  max-width: 120px;
+  overflow: hidden;
+  font-weight: 900;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.session-state {
+  color: rgba(255, 255, 255, 0.68);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+@keyframes userBreath {
+  0% {
+    box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.46);
+    transform: scale(0.94);
+  }
+  70% {
+    box-shadow: 0 0 0 8px rgba(34, 197, 94, 0);
+    transform: scale(1);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(34, 197, 94, 0);
+    transform: scale(0.94);
+  }
 }
 
 .primary-button,
@@ -1011,4 +1108,3 @@ h3 {
   }
 }
 </style>
-

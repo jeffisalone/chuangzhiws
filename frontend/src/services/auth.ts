@@ -4,7 +4,7 @@ type EncryptedEnvelope = {
   ciphertext: string
 }
 
-type AuthUser = {
+export type AuthUser = {
   id: number
   accountName: string
   studentId: string
@@ -12,7 +12,7 @@ type AuthUser = {
   createdAt: string
 }
 
-type AuthResponse = {
+export type AuthResponse = {
   success: true
   result: {
     user: AuthUser
@@ -183,4 +183,23 @@ export function login(payload: LoginPayload): Promise<AuthResponse> {
 
 export function registerUser(payload: RegisterPayload): Promise<AuthResponse> {
   return submitAuth('/auth/register', payload)
+}
+
+export async function verifySession(): Promise<AuthResponse> {
+  const response = await fetch(`${API_BASE_URL}/auth/session`, {
+    headers: { Accept: 'application/json' },
+    credentials: 'include',
+    cache: 'no-store',
+  })
+  const body = (await response.json()) as AuthResponse | AuthErrorResponse
+
+  if (!response.ok || !body.success) {
+    const message =
+      !body.success && body.errors?.[0]?.message
+        ? body.errors[0].message
+        : 'Session verification failed'
+    throw new AuthRequestError(message, response.status)
+  }
+
+  return body
 }
