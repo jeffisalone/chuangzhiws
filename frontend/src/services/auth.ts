@@ -63,7 +63,7 @@ export class AuthRequestError extends Error {
   }
 }
 
-const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL ?? 'https://d1.0rz.my').replace(
+export const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL ?? 'https://d1.0rz.my').replace(
   /\/+$/,
   '',
 )

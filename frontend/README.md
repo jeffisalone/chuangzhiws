@@ -23,6 +23,8 @@
 ## 关键文件
 
 - `src/services/auth.ts`：登录/注册 API、RSA/AES 加密、公钥获取与重试逻辑
+- `src/services/ai.ts`：大明白 AI 流式请求，调用后端 `/ai/chat`
+- `src/components/DamingbaiWorkbench.vue`：大明白聊天工作台页面
 - `src/components/LoginRegister.vue`：登录/注册表单
 - `src/App.vue`：页面入口和登录/注册视图切换
 - `src/main.ts`：Vue 应用入口
@@ -72,6 +74,22 @@ const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL ?? 'https://d1.0rz.my').
 $env:VITE_API_BASE_URL='http://127.0.0.1:8787'
 npm run dev
 ```
+
+## 大明白 AI 工作台
+
+入口：
+
+- 右上角用户名下拉框中的“大明白”
+- Dashboard 快捷入口中的“大明白”
+- 首页资源区“大明白”卡片
+
+进入页面前会调用 `GET /auth/session` 验证登录状态，未登录或 session 失效会回到登录页。聊天请求由 `src/services/ai.ts` 发到后端：
+
+```http
+POST https://d1.0rz.my/ai/chat
+```
+
+请求使用 `credentials: 'include'` 携带 HTTP-only session cookie。前端只处理后端返回的 NDJSON 流式 chunk，不保存或暴露 SiliconFlow 密钥。
 
 ## Auth 调用流程
 

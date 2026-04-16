@@ -4,6 +4,7 @@ import LoginRegister from './components/LoginRegister.vue'
 import ScrollReveal from './components/ScrollReveal.vue'
 import HomeFooter from './components/HomeFooter.vue'
 import FaultyTerminal from './components/FaultyTerminal.vue'
+import DamingbaiWorkbench from './components/DamingbaiWorkbench.vue'
 import { AuthRequestError, logout, verifySession, type AuthUser } from './services/auth'
 
 type Slide = {
@@ -13,11 +14,19 @@ type Slide = {
 }
 
 type AuthMode = 'login' | 'register'
-type PageView = 'home' | 'dashboard'
+type PageView = 'home' | 'dashboard' | 'damingbai'
 
 type UserMenuItem = {
   label: string
   detail: string
+  target?: string
+  view?: PageView
+}
+
+type DashboardModule = {
+  title: string
+  tag: string
+  text: string
   target?: string
   view?: PageView
 }
@@ -53,6 +62,7 @@ const userMenuRef = ref<HTMLElement | null>(null)
 
 const userMenuItems = [
   { label: 'Dashboard', detail: '工作台总览', view: 'dashboard' },
+  { label: '大明白', detail: 'AI 问答工作台', view: 'damingbai' },
   { label: 'AIGC教程', detail: '生成式智能课程', target: 'knowledge' },
   { label: '失败的Man', detail: '复盘与经验库', target: 'knowledge' },
   { label: '爬虫靶机', detail: '实战训练环境', target: 'knowledge' },
@@ -62,11 +72,12 @@ const userMenuItems = [
 ] satisfies UserMenuItem[]
 
 const dashboardModules = [
+  { title: '大明白', tag: 'AI', text: '连接 SiliconFlow Qwen 模型，用流式输出处理课程、项目和排错问题。', view: 'damingbai' },
   { title: 'AIGC教程', tag: 'Course', text: '从提示词、工作流到工程落地，整理生成式智能学习路径。', target: 'knowledge' },
   { title: '失败的Man', tag: 'Review', text: '沉淀试错记录，把失败原因转成下一次可复用的判断。', target: 'knowledge' },
   { title: '爬虫靶机', tag: 'Lab', text: '围绕抓取、逆向、反反爬和数据清洗做实战训练。', target: 'knowledge' },
   { title: '项目重生计划', tag: 'Build', text: '接手未完成项目，在重构、修复和发布中推进作品。', target: 'projects' },
-] satisfies Array<{ title: string; tag: string; text: string; target: string }>
+] satisfies DashboardModule[]
 
 const currentSlide = computed<Slide>(() => slides[activeSlide.value] ?? slides[0])
 const maxLevel = 60
@@ -155,14 +166,45 @@ const openDashboard = async () => {
   window.scrollTo({ top: 0 })
 }
 
+const openDamingbai = async () => {
+  closeUserMenu()
+  const user = await verifyCurrentUser()
+
+  if (!user) {
+    openAuth('login')
+    return
+  }
+
+  currentUser.value = user
+  activeView.value = 'damingbai'
+  authMode.value = null
+  window.scrollTo({ top: 0 })
+}
+
 const handleUserMenuItem = (item: UserMenuItem) => {
   if (item.view === 'dashboard') {
     void openDashboard()
     return
   }
 
+  if (item.view === 'damingbai') {
+    void openDamingbai()
+    return
+  }
+
   if (item.target) {
     scrollToSection(item.target)
+  }
+}
+
+const handleDashboardModule = (module: DashboardModule) => {
+  if (module.view === 'damingbai') {
+    void openDamingbai()
+    return
+  }
+
+  if (module.target) {
+    scrollToSection(module.target)
   }
 }
 
@@ -402,6 +444,10 @@ onBeforeUnmount(() => {
             </div>
 
             <div class="resources-grid">
+              <article class="resource-card damingbai-card" @click="openDamingbai">
+                <h3>大明白</h3>
+                <p>接入 Qwen 大模型的流式 AI 工作台，随时处理课程、项目、排错和复盘问题。</p>
+              </article>
               <article class="resource-card" @click="openAuth('login')">
                 <h3>AIGC教程</h3>
                 <p>掌握最新人工智能生成内容技术，利用大模型提高创作与工程效率。</p>
@@ -533,11 +579,19 @@ onBeforeUnmount(() => {
               <span>{{ module.tag }}</span>
               <h3>{{ module.title }}</h3>
               <p>{{ module.text }}</p>
-              <button type="button" @click="scrollToSection(module.target)">进入模块</button>
+              <button type="button" @click="handleDashboardModule(module)">进入模块</button>
             </article>
           </div>
         </div>
       </section>
+
+      <DamingbaiWorkbench
+        v-if="activeView === 'damingbai' && currentUser && !authMode"
+        :user="currentUser"
+        :is-verifying-session="isVerifyingSession"
+        @verify="verifyCurrentUser"
+        @back-dashboard="openDashboard"
+      />
 
       <div
         v-if="authMode"
