@@ -75,7 +75,7 @@ const userMenuItems = [
 
 const dashboardModules = [
   { title: '大明白', tag: 'AI', text: '连接 SiliconFlow Qwen 模型，用流式输出处理课程、项目和排错问题。', view: 'damingbai' },
-  { title: '提示词助手', tag: 'Prompt', text: '使用 stepfun-ai/step3 和 CO-STAR 框架，把简单想法改成专业图片或视频提示词。', view: 'promptAssistant' },
+  { title: '提示词助手', tag: 'Prompt', text: '使用 stepfun-ai/Step-3.5-Flash 和 CO-STAR 框架，把简单想法改成专业图片或视频提示词。', view: 'promptAssistant' },
   { title: 'AIGC教程', tag: 'Course', text: '从提示词、工作流到工程落地，整理生成式智能学习路径。', target: 'knowledge' },
   { title: '失败的Man', tag: 'Review', text: '沉淀试错记录，把失败原因转成下一次可复用的判断。', target: 'knowledge' },
   { title: '爬虫靶机', tag: 'Lab', text: '围绕抓取、逆向、反反爬和数据清洗做实战训练。', target: 'knowledge' },
@@ -478,7 +478,7 @@ onBeforeUnmount(() => {
               </article>
               <article class="resource-card prompt-card" @click="openPromptAssistant">
                 <h3>提示词助手</h3>
-                <p>接入 stepfun-ai/step3，用 CO-STAR 框架把简单想法优化成专业图片或视频提示词。</p>
+                <p>接入 stepfun-ai/Step-3.5-Flash，用 CO-STAR 框架把简单想法优化成专业图片或视频提示词。</p>
               </article>
               <article class="resource-card" @click="openAuth('login')">
                 <h3>AIGC教程</h3>

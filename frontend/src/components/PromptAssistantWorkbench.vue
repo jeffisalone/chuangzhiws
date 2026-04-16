@@ -217,7 +217,7 @@ onBeforeUnmount(() => {
             <p v-else-if="tokenUsage !== null" class="prompt-usage">
               本次优化 token 用量：{{ tokenUsage }}
             </p>
-            <p v-else>模型：stepfun-ai/step3</p>
+            <p v-else>模型：stepfun-ai/Step-3.5-Flash</p>
             <div class="action-buttons">
               <button v-if="isGenerating" type="button" class="stop-button" @click="stopGenerating">
                 停止
