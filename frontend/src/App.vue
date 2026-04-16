@@ -6,6 +6,7 @@ import HomeFooter from './components/HomeFooter.vue'
 import FaultyTerminal from './components/FaultyTerminal.vue'
 import DamingbaiWorkbench from './components/DamingbaiWorkbench.vue'
 import PromptAssistantWorkbench from './components/PromptAssistantWorkbench.vue'
+import FailureManWorkbench from './components/FailureManWorkbench.vue'
 import { AuthRequestError, logout, verifySession, type AuthUser } from './services/auth'
 
 type Slide = {
@@ -15,7 +16,7 @@ type Slide = {
 }
 
 type AuthMode = 'login' | 'register'
-type PageView = 'home' | 'dashboard' | 'damingbai' | 'promptAssistant'
+type PageView = 'home' | 'dashboard' | 'damingbai' | 'promptAssistant' | 'failureMan'
 
 type UserMenuItem = {
   label: string
@@ -70,7 +71,7 @@ const userMenuItems = [
   { label: '大明白', detail: 'AI 问答工作台', view: 'damingbai' },
   { label: '提示词助手', detail: '图片/视频提示词优化', view: 'promptAssistant' },
   { label: 'AIGC教程', detail: '生成式智能课程', href: AIGC_TUTORIAL_URL },
-  { label: '失败的Man', detail: '复盘与经验库', target: 'knowledge' },
+  { label: '失败的Man', detail: '复盘与经验库', view: 'failureMan' },
   { label: '爬虫靶机', detail: '实战训练环境', target: 'knowledge' },
   { label: '数据分析案例', detail: '真实数据练习', target: 'knowledge' },
   { label: '烂尾楼项目', detail: '项目重生计划', target: 'projects' },
@@ -81,7 +82,7 @@ const featureNavItems = [
   { label: '大明白', detail: 'AI 问答工作台', view: 'damingbai' },
   { label: '提示词助手', detail: '图片/视频提示词优化', view: 'promptAssistant' },
   { label: 'AIGC教程', detail: '生成式智能课程', href: AIGC_TUTORIAL_URL },
-  { label: '失败的Man', detail: '复盘与经验库', target: 'feature-failure' },
+  { label: '失败的Man', detail: '复盘与经验库', view: 'failureMan' },
   { label: '爬虫靶机', detail: '实战训练环境', target: 'feature-crawler' },
   { label: '数据分析', detail: '真实数据练习', target: 'feature-data' },
   { label: '项目重生', detail: '烂尾楼项目计划', target: 'feature-rebuild' },
@@ -92,7 +93,7 @@ const dashboardModules = [
   { title: '大明白', tag: 'AI', text: '连接 SiliconFlow Qwen 模型，用流式输出处理课程、项目和排错问题。', view: 'damingbai' },
   { title: '提示词助手', tag: 'Prompt', text: '使用 stepfun-ai/Step-3.5-Flash 和 CO-STAR 框架，把简单想法改成专业图片或视频提示词。', view: 'promptAssistant' },
   { title: 'AIGC教程', tag: 'Course', text: '从提示词、工作流到工程落地，整理生成式智能学习路径。', href: AIGC_TUTORIAL_URL },
-  { title: '失败的Man', tag: 'Review', text: '沉淀试错记录，把失败原因转成下一次可复用的判断。', target: 'knowledge' },
+  { title: '失败的Man', tag: 'Review', text: '沉淀试错记录，把失败原因转成下一次可复用的判断。', view: 'failureMan' },
   { title: '爬虫靶机', tag: 'Lab', text: '围绕抓取、逆向、反反爬和数据清洗做实战训练。', target: 'knowledge' },
   { title: '项目重生计划', tag: 'Build', text: '接手未完成项目，在重构、修复和发布中推进作品。', target: 'projects' },
 ] satisfies DashboardModule[]
@@ -214,6 +215,21 @@ const openPromptAssistant = async () => {
   window.scrollTo({ top: 0 })
 }
 
+const openFailureMan = async () => {
+  closeUserMenu()
+  const user = await verifyCurrentUser()
+
+  if (!user) {
+    openAuth('login')
+    return
+  }
+
+  currentUser.value = user
+  activeView.value = 'failureMan'
+  authMode.value = null
+  window.scrollTo({ top: 0 })
+}
+
 const openExternalFeature = async (href: string) => {
   closeUserMenu()
   const user = await verifyCurrentUser()
@@ -242,6 +258,11 @@ const handleUserMenuItem = (item: UserMenuItem) => {
     return
   }
 
+  if (item.view === 'failureMan') {
+    void openFailureMan()
+    return
+  }
+
   if (item.href) {
     void openExternalFeature(item.href)
     return
@@ -265,6 +286,11 @@ const handleFeatureNavItem = (item: UserMenuItem) => {
     return
   }
 
+  if (item.view === 'failureMan') {
+    void openFailureMan()
+    return
+  }
+
   if (item.href) {
     void openExternalFeature(item.href)
     return
@@ -283,6 +309,11 @@ const handleDashboardModule = (module: DashboardModule) => {
 
   if (module.view === 'promptAssistant') {
     void openPromptAssistant()
+    return
+  }
+
+  if (module.view === 'failureMan') {
+    void openFailureMan()
     return
   }
 
@@ -549,7 +580,7 @@ onBeforeUnmount(() => {
                 <h3>AIGC教程</h3>
                 <p>掌握最新人工智能生成内容技术，利用大模型提高创作与工程效率。</p>
               </article>
-              <article id="feature-failure" class="resource-card" @click="openAuth('login')">
+              <article id="feature-failure" class="resource-card" @click="openFailureMan">
                 <h3>失败的Man</h3>
                 <p>分享失败经验，记录试错复盘，把每一次卡壳变成下一次起步。 (跳转知识库)</p>
               </article>
@@ -692,6 +723,14 @@ onBeforeUnmount(() => {
 
       <PromptAssistantWorkbench
         v-if="activeView === 'promptAssistant' && currentUser && !authMode"
+        :user="currentUser"
+        :is-verifying-session="isVerifyingSession"
+        @verify="verifyCurrentUser"
+        @back-dashboard="openDashboard"
+      />
+
+      <FailureManWorkbench
+        v-if="activeView === 'failureMan' && currentUser && !authMode"
         :user="currentUser"
         :is-verifying-session="isVerifyingSession"
         @verify="verifyCurrentUser"
