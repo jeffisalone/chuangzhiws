@@ -55,12 +55,12 @@ const footerSections = [
       </nav>
       
       <section class="footer-more">
-        更多方式：<a href="#" class="more-link">寻找导师</a> 或 <a href="#" class="more-link">查找就近工坊</a>。
+        由&nbsp;<a href="https://dash.cloudflare.com/" class="more-link" >Cloudflare</a> & <a href="https://www.netlify.com/" class="more-link">Netlify</a>&nbsp;强力驱动。
       </section>
       
       <div class="footer-bottom">
         <div class="footer-legal">
-          <span class="copyright">Copyright © 2024 创智工坊. 保留所有权利。</span>
+          <span class="copyright">Copyright © 2026 创智工坊. 保留所有权利。</span>
           <div class="legal-links">
             <a href="#">隐私政策</a>
             <a href="#">使用条款</a>
@@ -68,7 +68,7 @@ const footerSections = [
           </div>
         </div>
         <div class="footer-locale">
-          <a href="#">中国 (简体中文)</a>
+          <a href="#zh_cn">中国 (简体中文)</a>
         </div>
       </div>
     </div>
