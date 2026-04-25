@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, ref } from 'vue'
+import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import { AuthRequestError, type AuthUser } from '../services/auth'
 import {
   streamPromptAssistant,
@@ -25,17 +25,56 @@ const tokenUsage = ref<number | null>(null)
 const isGenerating = ref(false)
 const isWaitingForFirstChunk = ref(false)
 const copyState = ref('')
+const loadingMessageIndex = ref(0)
 let activeController: AbortController | null = null
 let copyTimer: number | undefined
+let loadingTimer: number | undefined
 
 const canGenerate = computed(() => promptInput.value.trim().length > 0 && !isGenerating.value)
 const levelLabel = computed(() => `Lv.${props.user.level}`)
 const renderedResult = computed(() =>
   result.value.trim() ? renderMarkdown(result.value) : '',
 )
-const loadingLabel = computed(() =>
-  isWaitingForFirstChunk.value ? '正在分析提示词结构' : '正在优化专业细节',
+const loadingMessages = [
+  {
+    title: '正在分析提示词结构',
+    description: '正在组织类型判断、完整提示词、负面提示词和参数建议。',
+  },
+  {
+    title: '正在识别创作类型',
+    description: '正在判断更适合图片、视频还是通用生成场景。',
+  },
+  {
+    title: '正在补齐画面要素',
+    description: '正在完善主体、场景、镜头、光影和风格细节。',
+  },
+  {
+    title: '正在整理限制条件',
+    description: '正在生成负面提示词、质量控制和参数建议。',
+  },
+  {
+    title: '正在优化专业表达',
+    description: '正在把简单想法改写成可直接使用的生成提示词。',
+  },
+] as const
+
+const activeLoadingMessage = computed(
+  () => loadingMessages[loadingMessageIndex.value] ?? loadingMessages[0],
 )
+
+const startLoadingMessages = () => {
+  window.clearInterval(loadingTimer)
+  loadingMessageIndex.value = 0
+  loadingTimer = window.setInterval(() => {
+    loadingMessageIndex.value = (loadingMessageIndex.value + 1) % loadingMessages.length
+  }, 2000)
+}
+
+const stopLoadingMessages = () => {
+  window.clearInterval(loadingTimer)
+  loadingTimer = undefined
+  loadingMessageIndex.value = 0
+}
 
 const examples = [
   {
@@ -65,7 +104,17 @@ const stopGenerating = () => {
   activeController = null
   isGenerating.value = false
   isWaitingForFirstChunk.value = false
+  stopLoadingMessages()
 }
+
+watch(isGenerating, (generating) => {
+  if (generating) {
+    startLoadingMessages()
+    return
+  }
+
+  stopLoadingMessages()
+})
 
 const generatePrompt = async () => {
   const prompt = promptInput.value.trim()
@@ -142,6 +191,7 @@ const copyResult = async () => {
 
 onBeforeUnmount(() => {
   stopGenerating()
+  stopLoadingMessages()
   window.clearTimeout(copyTimer)
 })
 </script>
@@ -246,8 +296,8 @@ onBeforeUnmount(() => {
 
           <div v-if="isGenerating && !result.trim()" class="loading-state">
             <span class="loading-spinner" aria-hidden="true"></span>
-            <strong>{{ loadingLabel }}</strong>
-            <p>正在组织类型判断、完整提示词、负面提示词和参数建议。</p>
+            <strong>{{ activeLoadingMessage.title }}</strong>
+            <p>{{ activeLoadingMessage.description }}</p>
           </div>
 
           <div
@@ -263,7 +313,7 @@ onBeforeUnmount(() => {
 
           <div v-if="isGenerating && result.trim()" class="streaming-bar">
             <span class="loading-spinner small" aria-hidden="true"></span>
-            <p>{{ loadingLabel }}</p>
+            <p>{{ activeLoadingMessage.title }}</p>
           </div>
         </section>
       </div>
